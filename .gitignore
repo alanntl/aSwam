@@ -106,5 +106,9 @@ cython_debug/
 # Local development settings
 local_settings.py 
 
-# folders oldexp
+# folders oldexpcs
 old_exps/
+
+checkpoints_lstm/
+checkpoints_lstm_firefighter/
+checkpoints_stacked/
