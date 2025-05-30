@@ -1,83 +1,296 @@
-# aSwam: Adaptive Swimming Analysis Model
+# aSwam: Adaptive Firefighting Drone Swarm RL Model
 
-## Overview
-aSwam is a research project focused on developing intelligent swarm behavior using deep reinforcement learning techniques. The project simulates swimming-like motion patterns in a multi-agent environment, where agents (drones) learn to coordinate their movements while avoiding obstacles and pursuing targets.
+## Firefighting Drone Swarm in Action
+[![Watch the Firefighter Drone Swarm video](https://img.youtube.com/vi/VIDEO_ID_HERE/0.jpg)](FirefighterDrone.mp4)
+[Download or play FirefighterDrone.mp4](FirefighterDrone.mp4)
 
-## Research Context
-This project investigates the application of advanced deep reinforcement learning algorithms to solve complex multi-agent coordination problems. By combining LSTM networks with PPO (Proximal Policy Optimization), the system learns efficient swimming-like movement patterns that can be applied to various scenarios requiring coordinated motion control.
+---
 
-## Features
-- Multi-agent reinforcement learning environment built with Pygame and Gymnasium
-- LSTM-based neural network architecture for temporal sequence learning
-- Proximal Policy Optimization (PPO) implementation for stable training
-- Dynamic obstacle avoidance using potential fields
-- Configurable simulation parameters for environment customization
-- Real-time visualization of agent behaviors
-- Stackable model architecture for enhanced learning capabilities
+## 1. Introduction
 
-## Technical Stack
-- Python 3.11+
-- PyTorch for deep learning
-- Stable-Baselines3 for reinforcement learning algorithms
-- Pygame for simulation and visualization
-- Gymnasium (OpenAI Gym) for environment interface
-- NumPy for numerical computations
+This project implements an autonomous drone swarm system for firefighting, combining classical robotics (potential fields) with deep reinforcement learning (PPO with LSTM). The swarm must coordinate to extinguish multiple fires in a forest environment, avoiding dynamic obstacles (birds) and working under realistic constraints.
 
-## Installation
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/aSwam.git
+**Key innovation:** The RL agent does not control drones directly. Instead, it controls a single "attraction point" that guides the swarm, enabling emergent, coordinated behaviors.
 
-# Navigate to the project directory
-cd aSwam
+---
 
-# Create a virtual environment (recommended)
-python -m venv venv
+## 2. System Overview
 
-# Activate the virtual environment
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
+### 2.1 Environment Components
 
-# Install required dependencies
-pip install -r requirements.txt
+- **Drones:** Water-ejecting quadcopters, coordinated by the RL agent.
+- **Fires (Targets):** Static (or optionally dynamic) locations requiring multi-drone cooperation to extinguish.
+- **Obstacles:** Moving birds that create collision hazards.
+- **Forest Environment:** Visual elements (trees, terrain) for realism.
+
+### 2.2 Key Features
+
+- Multi-agent coordination via indirect control.
+- Dynamic obstacles and static/dynamic fires.
+- Sensor-based perception (radial sensors).
+- Adaptive control via RL-learned potential field parameters.
+
+---
+
+## 3. Mathematical Foundation: Potential Fields
+
+### 3.1 Control Strategy
+
+- **Attractive Force:** Drones are attracted to a single agent-controlled target point, not directly to fires.
+- **Repulsive Forces:** Drones are repelled by obstacles, other drones, and boundaries.
+- **Force Limiting:** All forces are clamped to prevent instability.
+
+#### Net Force Equation
+
+The net force on drone *i* is:
+
+$$
+\vec{F}_i^{net} = \vec{F}_i^{att} + \sum_{j} \vec{F}_{ij}^{rep,obs} + \sum_{k \neq i} \vec{F}_{ik}^{rep,drone} + \vec{F}_i^{rep,boundary}
+$$
+
+#### Attractive Force
+
+$$
+\vec{F}_i^{att} = 
+\begin{cases}
+k_{att} \cdot d_{target} \cdot \hat{r}_{target} & \text{if } d_{target} > \epsilon \\
+\vec{0} & \text{otherwise}
+\end{cases}
+$$
+
+Where:
+- $k_{att}$ = attraction strength parameter (dynamically adjusted by agent)
+- $d_{target}$ = distance to agent-controlled target position
+- $\hat{r}_{target}$ = unit vector toward agent-controlled target
+
+#### Repulsive Forces
+
+**Obstacle Repulsion:**
+$$
+\vec{F}_{ij}^{rep,obs} = 
+\begin{cases}
+k_{obs} \cdot \left(\frac{1}{d_{ij}} - \frac{1}{r_{obs}}\right) \cdot \frac{1}{d_{ij}} \cdot \hat{r}_{ij} & \text{if } \epsilon < d_{ij} < r_{obs} \\
+\vec{0} & \text{otherwise}
+\end{cases}
+$$
+
+**Inter-Drone Repulsion:**  
+Similar formula for drone-to-drone repulsion.
+
+**Boundary Repulsion:**
+$$
+\vec{F}_i^{rep,boundary} = k_{boundary} \cdot \left(\frac{1}{d_{boundary}} - \frac{1}{r_{boundary}}\right) \cdot \hat{n}_{boundary}
+$$
+
+#### Force Limiting
+
+$$
+\vec{F}_{limited} = 
+\begin{cases}
+\vec{F} & \text{if } |\vec{F}| \leq F_{max} \\
+F_{max} \cdot \frac{\vec{F}}{|\vec{F}|} & \text{otherwise}
+\end{cases}
+$$
+
+---
+
+## 4. Reinforcement Learning Architecture
+
+### 4.1 State Space
+
+- **Per-Drone:** Normalized position, sensor readings, fire proximity.
+- **Global:** Nearest detected fire positions.
+
+### 4.2 Action Space
+
+- **Target Position:** (x, y) coordinates for the attraction point.
+- **Potential Field Parameters:** (optionally) normalized values for attraction/repulsion strengths.
+
+### 4.3 Network
+
+- **Recurrent PPO (LSTM):** Captures temporal dependencies in swarm behavior.
+- **Policy/Value Heads:** For action selection and value estimation.
+
+---
+
+## 5. Reward Structure
+
+- **Step Penalty:** Negative reward per step (efficiency).
+- **Fire Extinguished:** Positive reward per fire.
+- **Drone Crash:** Negative reward.
+- **All Drones Lost/All Fires Out:** Large terminal rewards.
+- **Hitting Reward:** Small reward for being near fires.
+- **Intrinsic Reward:** Encourages exploration (state visitation frequency).
+
+All rewards are scaled for stable learning.
+
+---
+
+## 6. Fire Extinguishing Mechanics
+
+- **Multi-Drone Requirement:** Fires require several drones in proximity for multiple steps.
+- **Static/Dynamic Fires:** By default, fires are static; can be made dynamic by adjusting parameters.
+
+---
+
+## 7. Sensor System
+
+- **Radial Sensors:** Each drone uses multiple rays to detect obstacles.
+- **Ray-Marching:** Incremental distance checking for collision detection.
+
+---
+
+## 8. Training Process
+
+- **Algorithm:** Proximal Policy Optimization (PPO) with LSTM.
+- **Curriculum:** Initial safety period, progressive difficulty, regular checkpointing.
+- **Visualization:** Real-time rendering of drones, fires, obstacles, and the agent's target point.
+
+---
+
+## 9. Visualization
+
+- **Drones:** Blue quadcopters with animated propellers.
+- **Fires:** Animated flames.
+- **Birds:** Animated obstacles.
+- **Agent's Target:** Blue circle showing the attraction point.
+- **Sidebar:** Displays episode stats, rewards, and PF parameters.
+
+---
+
+## 10. System Behavior Diagrams
+
+### 10.1 Force Field Visualization
+
+```
+    Agent's Target Point (Controlled by RL)
+            ↓
+    [Attractive Force]
+            ↓
+         Drone ←――→ Drone
+            ↑      [Repulsion]
+    [Repulsive Forces]
+       ↑    ↑    ↑
+    Bird  Wall  Bird
+
+    Fire Locations (Observed but not attracting)
+     🔥    🔥    🔥
+
+The agent must learn to position the target near fires!
 ```
 
-### Requirements
-All dependencies are listed in `requirements.txt` with their minimum required versions:
-- numpy >= 1.21.0
-- pygame >= 2.6.0
-- gymnasium >= 0.29.0
-- torch >= 2.0.0
-- stable-baselines3 >= 2.1.0
-- matplotlib >= 3.7.0
-- pandas >= 2.0.0
-- scikit-learn >= 1.0.0
+### 10.2 Multi-Drone Coordination
 
-### System Requirements
-- Python 3.11 or higher
-- Sufficient RAM (recommended: 8GB+)
-- GPU support (optional but recommended for faster training)
+```
+    Fire Location
+     ⚡ ⚡ ⚡
+    ╱  ╱  ╲  ╲
+   D1  D2  D3  D4
 
-## Usage
-The project includes two main Jupyter notebooks:
-1. `swarmdrl_lstm.ipynb`: Implements LSTM-based learning for temporal sequence processing
-2. `swarmdrl_stackking.ipynb`: Demonstrates advanced stacking techniques for enhanced model performance
+Required: Multiple drones within proximity for sustained duration
+```
 
-To run the simulations:
-1. Open either notebook in Jupyter Lab/Notebook
-2. Execute the cells in sequence
-3. Adjust hyperparameters as needed in the configuration sections
+### 10.3 Control Flow
 
-## Project Structure
-- `swarmdrl_lstm.ipynb`: LSTM implementation for temporal learning
-- `swarmdrl_stackking.ipynb`: Advanced stacking techniques
-- `CONTRIBUTING.md`: Guidelines for contributing to the project
-- `LICENSE`: Project license information
+```
+Observation → LSTM-PPO → Action
+     ↓                      ↓
+[Drone Positions,      [Target Position (x,y),
+ Sensors,               PF Parameters]
+ Fire Locations]            ↓
+                    Agent's Target Point
+                            ↓
+                    Attractive Force to Target
+                            ↓
+                    Drone Movement → Fire Proximity → Extinguishing
+```
 
-## Contributing
-Please read `CONTRIBUTING.md` for details on our code of conduct and the process for submitting pull requests.
+### 10.4 Direct vs Indirect Control Comparison
 
-## License
-This project is licensed under the terms specified in the LICENSE file.
+```
+Traditional Direct Control:          This System's Indirect Control:
+                                    
+Fire ←― Drone                       Fire     Agent's Target
+Fire ←― Drone                        🔥          ⊕
+Fire ←― Drone                                    ↓
+                                    Drone ――――→ ⊕
+(Each drone attracted               Drone ――――→ ⊕
+ directly to fires)                 Drone ――――→ ⊕
+                                    
+                                    (All drones attracted to 
+                                     single agent-controlled point)
+```
+
+---
+
+## 11. Implementation Structure
+
+- `swarmdrl_firefighter.ipynb`: Main notebook with environment, training, and evaluation code.
+- `DroneSwarmEnv`: Custom Gym environment implementing the simulation and RL interface.
+- `RenderCallback`: For periodic rendering during training.
+- `requirements.txt`: Python dependencies.
+
+---
+
+## 12. Usage
+
+1. **Install dependencies:**  
+   ```zsh
+   pip install -r requirements.txt
+   ```
+2. **Run the notebook:**  
+   Open `swarmdrl_firefighter.ipynb` in Jupyter Lab/Notebook and execute cells in order.
+3. **Train the model:**  
+   The notebook includes code for initial training, retraining, and evaluation.
+4. **Visualize:**  
+   Rendering is integrated for both training and evaluation.
+
+---
+
+## 13. Key Innovations
+
+- **Indirect Swarm Control:** RL agent controls a single attraction point.
+- **Hybrid Control:** Combines potential fields with RL adaptation.
+- **Temporal Modeling:** LSTM for sequential swarm behavior.
+- **Multi-Objective Learning:** Balances fire suppression, collision avoidance, and exploration.
+
+---
+
+## 14. Experimental Results
+
+- **Emergent Behaviors:** Strategic target placement, formation flying, obstacle avoidance, dynamic regrouping.
+- **Metrics:** Mission success rate, drone efficiency, time performance, exploration coverage, coordination quality.
+
+---
+
+## 15. License
+
+See `LICENSE` for details.
+
+---
+
+## 16. References
+
+- [swarmdrl_firefighter.ipynb](swarmdrl_firefighter.ipynb): Full implementation and experiment details.
+
+---
+
+## Additional Training Video Examples
+
+Below are sample videos showing the drone swarm RL training at different stages:
+
+### 1. 50 Million Timesteps (Late Training)
+[![Watch the 50M training video](https://img.youtube.com/vi/VIDEO_ID_HERE/0.jpg)](PPOPOswarm_50m_training.mp4)
+[Download or play PPOPOswarm_50m_training.mp4](PPOPOswarm_50m_training.mp4)
+
+---
+
+### 2. Early Stage Training
+[![Watch the early stage training video](https://img.youtube.com/vi/VIDEO_ID_HERE/0.jpg)](PPOPOswarm_earlystage_training.mp4)
+[Download or play PPOPOswarm_earlystage_training.mp4](PPOPOswarm_earlystage_training.mp4)
+
+---
+
+### 3. 10 Million Timesteps (Mid Training)
+[![Watch the 10M training video](https://img.youtube.com/vi/VIDEO_ID_HERE/0.jpg)](PPOPOswarm_10m_training.mp4)
+[Download or play PPOPOswarm_10m_training.mp4](PPOPOswarm_10m_training.mp4)
