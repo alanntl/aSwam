@@ -44,19 +44,19 @@ This project implements an autonomous drone swarm system for firefighting, combi
 
 The net force on drone *i* is:
 
-$$
+```math
 \vec{F}_i^{net} = \vec{F}_i^{att} + \sum_{j} \vec{F}_{ij}^{rep,obs} + \sum_{k \neq i} \vec{F}_{ik}^{rep,drone} + \vec{F}_i^{rep,boundary}
-$$
+```
 
 #### Attractive Force
 
-$$
+```math
 \vec{F}_i^{att} = 
 \begin{cases}
 k_{att} \cdot d_{target} \cdot \hat{r}_{target} & \text{if } d_{target} > \epsilon \\
 \vec{0} & \text{otherwise}
 \end{cases}
-$$
+```
 
 Where:
 - $k_{att}$ = attraction strength parameter (dynamically adjusted by agent)
@@ -66,31 +66,31 @@ Where:
 #### Repulsive Forces
 
 **Obstacle Repulsion:**
-$$
+```math
 \vec{F}_{ij}^{rep,obs} = 
 \begin{cases}
 k_{obs} \cdot \left(\frac{1}{d_{ij}} - \frac{1}{r_{obs}}\right) \cdot \frac{1}{d_{ij}} \cdot \hat{r}_{ij} & \text{if } \epsilon < d_{ij} < r_{obs} \\
 \vec{0} & \text{otherwise}
 \end{cases}
-$$
+```
 
 **Inter-Drone Repulsion:**  
 Similar formula for drone-to-drone repulsion.
 
 **Boundary Repulsion:**
-$$
+```math
 \vec{F}_i^{rep,boundary} = k_{boundary} \cdot \left(\frac{1}{d_{boundary}} - \frac{1}{r_{boundary}}\right) \cdot \hat{n}_{boundary}
-$$
+```
 
 #### Force Limiting
 
-$$
+```math
 \vec{F}_{limited} = 
 \begin{cases}
 \vec{F} & \text{if } |\vec{F}| \leq F_{max} \\
 F_{max} \cdot \frac{\vec{F}}{|\vec{F}|} & \text{otherwise}
 \end{cases}
-$$
+```
 
 ---
 
