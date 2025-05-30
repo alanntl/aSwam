@@ -14,17 +14,22 @@ This project implements an autonomous drone swarm system for firefighting, combi
 
 ---
 
-## 2. System Overview
+## 2. Key Innovations
+- **Indirect Swarm Control:** RL agent controls a single attraction point.
+- **Hybrid Control:** Combines potential fields with RL adaptation.
+- **Temporal Modeling:** LSTM for sequential swarm behavior.
+- **Multi-Objective Learning:** Balances fire suppression, collision avoidance, and exploration.
 
-### 2.1 Environment Components
+---
 
+## 3. System Overview
+### 3.1 Environment Components
 - **Drones:** Water-ejecting quadcopters, coordinated by the RL agent.
 - **Fires (Targets):** Static (or optionally dynamic) locations requiring multi-drone cooperation to extinguish.
 - **Obstacles:** Moving birds that create collision hazards.
 - **Forest Environment:** Visual elements (trees, terrain) for realism.
 
-### 2.2 Key Features
-
+### 3.2 Key Features
 - Multi-agent coordination via indirect control.
 - Dynamic obstacles and static/dynamic fires.
 - Sensor-based perception (radial sensors).
@@ -32,89 +37,74 @@ This project implements an autonomous drone swarm system for firefighting, combi
 
 ---
 
-## 3. Mathematical Foundation: Potential Fields
-
-### 3.1 Control Strategy
-
+## 4. Mathematical Foundation: Potential Fields
+### 4.1 Control Strategy
 - **Attractive Force:** Drones are attracted to a single agent-controlled target point, not directly to fires.
 - **Repulsive Forces:** Drones are repelled by obstacles, other drones, and boundaries.
 - **Force Limiting:** All forces are clamped to prevent instability.
 
 #### Net Force Equation
-
 The net force on drone *i* is:
-
 ```math
-\vec{F}_i^{net} = \vec{F}_i^{att} + \sum_{j} \vec{F}_{ij}^{rep,obs} + \sum_{k \neq i} \vec{F}_{ik}^{rep,drone} + \vec{F}_i^{rep,boundary}
+\\vec{F}_i^{net} = \\vec{F}_i^{att} + \\sum_{j} \\vec{F}_{ij}^{rep,obs} + \\sum_{k \\neq i} \\vec{F}_{ik}^{rep,drone} + \\vec{F}_i^{rep,boundary}
 ```
 
 #### Attractive Force
-
 ```math
-\vec{F}_i^{att} = 
-\begin{cases}
-k_{att} \cdot d_{target} \cdot \hat{r}_{target} & \text{if } d_{target} > \epsilon \\
-\vec{0} & \text{otherwise}
-\end{cases}
+\\vec{F}_i^{att} = 
+\\begin{cases}
+k_{att} \\cdot d_{target} \\cdot \\hat{r}_{target} & \\text{if } d_{target} > \\epsilon \\\\
+\\vec{0} & \\text{otherwise}
+\\end{cases}
 ```
-
 Where:
 - $k_{att}$ = attraction strength parameter (dynamically adjusted by agent)
 - $d_{target}$ = distance to agent-controlled target position
-- $\hat{r}_{target}$ = unit vector toward agent-controlled target
+- $\\hat{r}_{target}$ = unit vector toward agent-controlled target
 
 #### Repulsive Forces
-
 **Obstacle Repulsion:**
 ```math
-\vec{F}_{ij}^{rep,obs} = 
-\begin{cases}
-k_{obs} \cdot \left(\frac{1}{d_{ij}} - \frac{1}{r_{obs}}\right) \cdot \frac{1}{d_{ij}} \cdot \hat{r}_{ij} & \text{if } \epsilon < d_{ij} < r_{obs} \\
-\vec{0} & \text{otherwise}
-\end{cases}
+\\vec{F}_{ij}^{rep,obs} = 
+\\begin{cases}
+k_{obs} \\cdot \\left(\\frac{1}{d_{ij}} - \\frac{1}{r_{obs}}\\right) \\cdot \\frac{1}{d_{ij}} \\cdot \\hat{r}_{ij} & \\text{if } \\epsilon < d_{ij} < r_{obs} \\\\
+\\vec{0} & \\text{otherwise}
+\\end{cases}
 ```
-
 **Inter-Drone Repulsion:**  
 Similar formula for drone-to-drone repulsion.
-
 **Boundary Repulsion:**
 ```math
-\vec{F}_i^{rep,boundary} = k_{boundary} \cdot \left(\frac{1}{d_{boundary}} - \frac{1}{r_{boundary}}\right) \cdot \hat{n}_{boundary}
+\\vec{F}_i^{rep,boundary} = k_{boundary} \\cdot \\left(\\frac{1}{d_{boundary}} - \\frac{1}{r_{boundary}}\\right) \\cdot \\hat{n}_{boundary}
 ```
 
 #### Force Limiting
-
 ```math
-\vec{F}_{limited} = 
-\begin{cases}
-\vec{F} & \text{if } |\vec{F}| \leq F_{max} \\
-F_{max} \cdot \frac{\vec{F}}{|\vec{F}|} & \text{otherwise}
-\end{cases}
+\\vec{F}_{limited} = 
+\\begin{cases}
+\\vec{F} & \\text{if } |\\vec{F}| \\leq F_{max} \\\\
+F_{max} \\cdot \\frac{\\vec{F}}{|\\vec{F}|} & \\text{otherwise}
+\\end{cases}
 ```
 
 ---
 
-## 4. Reinforcement Learning Architecture
-
-### 4.1 State Space
-
+## 5. Mathematical Foundation: Reinforcement Learning
+### 5.1 State Space
 - **Per-Drone:** Normalized position, sensor readings, fire proximity.
 - **Global:** Nearest detected fire positions.
 
-### 4.2 Action Space
-
+### 5.2 Action Space
 - **Target Position:** (x, y) coordinates for the attraction point.
 - **Potential Field Parameters:** (optionally) normalized values for attraction/repulsion strengths.
 
-### 4.3 Network
-
+### 5.3 Network
 - **Recurrent PPO (LSTM):** Captures temporal dependencies in swarm behavior.
 - **Policy/Value Heads:** For action selection and value estimation.
 
 ---
 
-## 5. Reward Structure
-
+## 6. Reward Structure
 - **Step Penalty:** Negative reward per step (efficiency).
 - **Fire Extinguished:** Positive reward per fire.
 - **Drone Crash:** Negative reward.
@@ -126,30 +116,26 @@ All rewards are scaled for stable learning.
 
 ---
 
-## 6. Fire Extinguishing Mechanics
-
+## 7. Fire Extinguishing Mechanics
 - **Multi-Drone Requirement:** Fires require several drones in proximity for multiple steps.
 - **Static/Dynamic Fires:** By default, fires are static; can be made dynamic by adjusting parameters.
 
 ---
 
-## 7. Sensor System
-
-- **Radial Sensors:** Each drone uses multiple rays to detect obstacles.
+## 8. Sensor System
+- **Radial Sensors:** Each drone uses multiple rays to detect obstacles and fire locations.
 - **Ray-Marching:** Incremental distance checking for collision detection.
 
 ---
 
-## 8. Training Process
-
+## 9. Training Process
 - **Algorithm:** Proximal Policy Optimization (PPO) with LSTM.
 - **Curriculum:** Initial safety period, progressive difficulty, regular checkpointing.
 - **Visualization:** Real-time rendering of drones, fires, obstacles, and the agent's target point.
 
 ---
 
-## 9. Visualization
-
+## 10. Visualization
 - **Drones:** Blue quadcopters with animated propellers.
 - **Fires:** Animated flames.
 - **Birds:** Animated obstacles.
@@ -158,10 +144,8 @@ All rewards are scaled for stable learning.
 
 ---
 
-## 10. System Behavior Diagrams
-
-### 10.1 Force Field Visualization
-
+## 11. System Behavior Diagrams
+### 11.1 Force Field Visualization
 ```
     Agent's Target Point (Controlled by RL)
             ↓
@@ -179,8 +163,7 @@ All rewards are scaled for stable learning.
 The agent must learn to position the target near fires!
 ```
 
-### 10.2 Multi-Drone Coordination
-
+### 11.2 Multi-Drone Coordination
 ```
     Fire Location
      ⚡ ⚡ ⚡
@@ -190,8 +173,7 @@ The agent must learn to position the target near fires!
 Required: Multiple drones within proximity for sustained duration
 ```
 
-### 10.3 Control Flow
-
+### 11.3 Control Flow
 ```
 Observation → LSTM-PPO → Action
      ↓                      ↓
@@ -205,8 +187,7 @@ Observation → LSTM-PPO → Action
                     Drone Movement → Fire Proximity → Extinguishing
 ```
 
-### 10.4 Direct vs Indirect Control Comparison
-
+### 11.4 Direct vs Indirect Control Comparison
 ```
 Traditional Direct Control:          This System's Indirect Control:
                                     
@@ -224,8 +205,7 @@ Drone ←― Fire                       Fire     Agent's Target
 
 ---
 
-## 11. Implementation Structure
-
+## 12. Implementation Structure
 - `swarmdrl_firefighter.ipynb`: Main notebook with environment, training, and evaluation code.
 - `DroneSwarmEnv`: Custom Gym environment implementing the simulation and RL interface.
 - `RenderCallback`: For periodic rendering during training.
@@ -233,8 +213,7 @@ Drone ←― Fire                       Fire     Agent's Target
 
 ---
 
-## 12. Usage
-
+## 13. Usage
 1. **Install dependencies:**  
    ```zsh
    pip install -r requirements.txt
@@ -248,30 +227,18 @@ Drone ←― Fire                       Fire     Agent's Target
 
 ---
 
-## 13. Key Innovations
-
-- **Indirect Swarm Control:** RL agent controls a single attraction point.
-- **Hybrid Control:** Combines potential fields with RL adaptation.
-- **Temporal Modeling:** LSTM for sequential swarm behavior.
-- **Multi-Objective Learning:** Balances fire suppression, collision avoidance, and exploration.
-
----
-
 ## 14. Experimental Results
-
 - **Emergent Behaviors:** Strategic target placement, formation flying, obstacle avoidance, dynamic regrouping.
 - **Metrics:** Mission success rate, drone efficiency, time performance, exploration coverage, coordination quality.
 
 ---
 
 ## 15. License
-
 See `LICENSE` for details.
 
 ---
 
 ## 16. References
-
 - [swarmdrl_firefighter.ipynb](swarmdrl_firefighter.ipynb): Full implementation and experiment details.
 
 ---
