@@ -14,26 +14,26 @@ This project implements an autonomous drone swarm system for firefighting, combi
 
 ---
 
-## 2. Key Innovations
-- **Indirect Swarm Control:** RL agent controls a single attraction point.
-- **Hybrid Control:** Combines potential fields with RL adaptation.
-- **Temporal Modeling:** LSTM for sequential swarm behavior.
-- **Multi-Objective Learning:** Balances fire suppression, collision avoidance, and exploration.
-
----
-
-## 3. System Overview
-### 3.1 Environment Components
+## 2. System Overview
+### 2.1 Environment Components
 - **Drones:** Water-ejecting quadcopters, coordinated by the RL agent.
 - **Fires (Targets):** Static (or optionally dynamic) locations requiring multi-drone cooperation to extinguish.
 - **Obstacles:** Moving birds that create collision hazards.
 - **Forest Environment:** Visual elements (trees, terrain) for realism.
 
-### 3.2 Key Features
+### 2.2 Key Features
 - Multi-agent coordination via indirect control.
 - Dynamic obstacles and static/dynamic fires.
 - Sensor-based perception (radial sensors).
 - Adaptive control via RL-learned potential field parameters.
+
+---
+
+## 3. Key Innovations
+- **Indirect Swarm Control:** RL agent controls a single attraction point.
+- **Hybrid Control:** Combines potential fields with RL adaptation.
+- **Temporal Modeling:** LSTM for sequential swarm behavior.
+- **Multi-Objective Learning:** Balances fire suppression, collision avoidance, and exploration.
 
 ---
 
@@ -46,59 +46,94 @@ This project implements an autonomous drone swarm system for firefighting, combi
 #### Net Force Equation
 The net force on drone *i* is:
 ```math
-\\vec{F}_i^{net} = \\vec{F}_i^{att} + \\sum_{j} \\vec{F}_{ij}^{rep,obs} + \\sum_{k \\neq i} \\vec{F}_{ik}^{rep,drone} + \\vec{F}_i^{rep,boundary}
+\vec{F}_i^{net} = \vec{F}_i^{att} + \sum_{j} \vec{F}_{ij}^{rep,obs} + \sum_{k \neq i} \vec{F}_{ik}^{rep,drone} + \vec{F}_i^{rep,boundary}
 ```
 
 #### Attractive Force
 ```math
-\\vec{F}_i^{att} = 
-\\begin{cases}
-k_{att} \\cdot d_{target} \\cdot \\hat{r}_{target} & \\text{if } d_{target} > \\epsilon \\\\
-\\vec{0} & \\text{otherwise}
-\\end{cases}
+\vec{F}_i^{att} = 
+\begin{cases}
+k_{att} \cdot d_{target} \cdot \hat{r}_{target} & \text{if } d_{target} > \epsilon \\
+\vec{0} & \text{otherwise}
+\end{cases}
 ```
 Where:
 - $k_{att}$ = attraction strength parameter (dynamically adjusted by agent)
 - $d_{target}$ = distance to agent-controlled target position
-- $\\hat{r}_{target}$ = unit vector toward agent-controlled target
+- $\hat{r}_{target}$ = unit vector toward agent-controlled target
 
 #### Repulsive Forces
 **Obstacle Repulsion:**
 ```math
-\\vec{F}_{ij}^{rep,obs} = 
-\\begin{cases}
-k_{obs} \\cdot \\left(\\frac{1}{d_{ij}} - \\frac{1}{r_{obs}}\\right) \\cdot \\frac{1}{d_{ij}} \\cdot \\hat{r}_{ij} & \\text{if } \\epsilon < d_{ij} < r_{obs} \\\\
-\\vec{0} & \\text{otherwise}
-\\end{cases}
+\vec{F}_{ij}^{rep,obs} = 
+\begin{cases}
+k_{obs} \cdot \left(\frac{1}{d_{ij}} - \frac{1}{r_{obs}}\right) \cdot \frac{1}{d_{ij}} \cdot \hat{r}_{ij} & \text{if } \epsilon < d_{ij} < r_{obs} \\
+\vec{0} & \text{otherwise}
+\end{cases}
 ```
 **Inter-Drone Repulsion:**  
 Similar formula for drone-to-drone repulsion.
 **Boundary Repulsion:**
 ```math
-\\vec{F}_i^{rep,boundary} = k_{boundary} \\cdot \\left(\\frac{1}{d_{boundary}} - \\frac{1}{r_{boundary}}\\right) \\cdot \\hat{n}_{boundary}
+\vec{F}_i^{rep,boundary} = k_{boundary} \cdot \left(\frac{1}{d_{boundary}} - \frac{1}{r_{boundary}}\right) \cdot \hat{n}_{boundary}
 ```
 
 #### Force Limiting
 ```math
-\\vec{F}_{limited} = 
-\\begin{cases}
-\\vec{F} & \\text{if } |\\vec{F}| \\leq F_{max} \\\\
-F_{max} \\cdot \\frac{\\vec{F}}{|\\vec{F}|} & \\text{otherwise}
-\\end{cases}
+\vec{F}_{limited} = 
+\begin{cases}
+\vec{F} & \text{if } |\vec{F}| \leq F_{max} \\
+F_{max} \cdot \frac{\vec{F}}{|\vec{F}|} & \text{otherwise}
+\end{cases}
 ```
 
 ---
 
 ## 5. Mathematical Foundation: Reinforcement Learning
+
 ### 5.1 State Space
+
+The state space consists of:
 - **Per-Drone:** Normalized position, sensor readings, fire proximity.
 - **Global:** Nearest detected fire positions.
 
+State vector: $s_t = [s_t^{drone}, s_t^{global}]$
+
 ### 5.2 Action Space
+
 - **Target Position:** (x, y) coordinates for the attraction point.
 - **Potential Field Parameters:** (optionally) normalized values for attraction/repulsion strengths.
 
-### 5.3 Network
+Action vector: $a_t = [x_{target}, y_{target}, k_{att}, k_{obs}, k_{boundary}]$
+
+### 5.3 Policy and Value Functions
+
+**Policy Function:**
+```math
+\pi(a_t | s_t, h_{t-1}) = \text{LSTM-PPO}(s_t, h_{t-1})
+```
+
+**Value Function:**
+```math
+V^\pi(s_t) = \mathbb{E}[\sum_{k=0}^{\infty} \gamma^k r_{t+k} | s_t, \pi]
+```
+
+**Advantage Function:**
+```math
+A^\pi(s_t, a_t) = Q^\pi(s_t, a_t) - V^\pi(s_t)
+```
+
+### 5.4 PPO Objective
+
+**Clipped Surrogate Objective:**
+```math
+L^{CLIP}(\theta) = \mathbb{E}_t[\min(r_t(\theta)\hat{A}_t, \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon)\hat{A}_t)]
+```
+
+Where $r_t(\theta) = \frac{\pi_\theta(a_t|s_t)}{\pi_{\theta_{old}}(a_t|s_t)}$
+
+### 5.5 Network
+
 - **Recurrent PPO (LSTM):** Captures temporal dependencies in swarm behavior.
 - **Policy/Value Heads:** For action selection and value estimation.
 
