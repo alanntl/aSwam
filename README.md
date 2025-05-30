@@ -1,7 +1,7 @@
 # aSwam: Adaptive Firefighting Drone Swarm RL Model
 
 ## Firefighting Drone Swarm in Action
-[![Watch the Firefighter Drone Swarm video](https://img.youtube.com/vi/VIDEO_ID_HERE/0.jpg)](FirefighterDrone.mp4)
+[![Firefighting Drone Swarm Preview](FirefighterDrone_preview.gif)](FirefighterDrone.mp4)
 [Download or play FirefighterDrone.mp4](FirefighterDrone.mp4)
 
 ---
@@ -214,11 +214,12 @@ Fire ←― Drone                       Fire     Agent's Target
 Fire ←― Drone                        🔥          ⊕
 Fire ←― Drone                                    ↓
                                     Drone ――――→ ⊕
-(Each drone attracted               Drone ――――→ ⊕
- directly to fires)                 Drone ――――→ ⊕
-                                    
-                                    (All drones attracted to 
-                                     single agent-controlled point)
+Drone ←― Fire                       Drone ――――→ ⊕
+Drone ←― Fire                        🔥          ⊕
+Drone ←― Fire                       Fire     Agent's Target
+
+(Each drone attracted               (All drones attracted to 
+ directly to fires)                 single agent-controlled point)
 ```
 
 ---

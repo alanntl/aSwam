@@ -5,4 +5,5 @@ torch>=2.0.0
 stable-baselines3>=2.1.0
 matplotlib>=3.7.0
 pandas>=2.0.0
-scikit-learn>=1.0.0 
+scikit-learn>=1.0.0
+moviepy>=1.0.3
